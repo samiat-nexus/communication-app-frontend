@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { io } from "socket.io-client";
 
-const socket = io("http://localhost:5000"); // backend server URL
+const socket = io("https://si-communication-app.onrender.com"); // backend server URL
 
 function App() {
   const [message, setMessage] = useState("");
