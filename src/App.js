@@ -1,124 +1,137 @@
-import React, { useEffect, useState } from "react";
-import io from "socket.io-client";
+// frontend/src/App.js
+import React, { useState, useEffect } from "react";
+import socket from "./socket";
 
-const socket = io("https://si-communication-app.onrender.com"); // ✅ Live backend URL
+const API_BASE = process.env.REACT_APP_BACKEND_URL || "https://si-communication-app.onrender.com";
 
 function App() {
-  const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
 
-  // 🔹 Load previous messages from MongoDB
+  // Load messages when page loads
   useEffect(() => {
-    fetch("https://si-communication-app.onrender.com/messages")
-      .then((res) => res.json())
-      .then((data) => setMessages(data))
-      .catch((err) => console.error("Failed to load messages:", err));
+    fetch(`${API_BASE}/messages`)
+      .then(res => res.json())
+      .then(data => setMessages(data))
+      .catch(err => console.error("❌ Failed to fetch messages:", err));
   }, []);
 
-  // 🔹 Listen for new messages from socket.io
+  // Connect socket
   useEffect(() => {
+    socket.on("connect", () => console.log("🟢 Connected to live socket server"));
+    socket.on("disconnect", () => console.log("🔴 Disconnected from socket server"));
+
+    // Receive new messages
     socket.on("chat message", (msg) => {
-      setMessages((prevMessages) => [...prevMessages, msg]);
+      setMessages(prev => [...prev, msg]);
+    });
+
+    // Receive chat history
+    socket.on("chat_history", (history) => {
+      setMessages(history);
     });
 
     return () => {
       socket.off("chat message");
+      socket.off("chat_history");
     };
   }, []);
 
-  // 🔹 Send message to server
+  // Handle send message
   const sendMessage = (e) => {
     e.preventDefault();
-    if (message.trim()) {
-      socket.emit("chat message", message);
-      setMessage("");
-    }
+    if (!input.trim()) return;
+    socket.emit("chat message", input);
+    setInput("");
   };
 
   return (
     <div style={styles.container}>
-      <h2 style={styles.header}>💬 Live Communication App</h2>
+      <h1 style={styles.title}>💬 Communication App</h1>
 
       <div style={styles.chatBox}>
         {messages.length === 0 ? (
-          <p style={styles.empty}>No messages yet...</p>
+          <p style={styles.placeholder}>No messages yet...</p>
         ) : (
-          messages.map((msg, index) => (
-            <div key={index} style={styles.message}>
-              {msg}
-            </div>
+          messages.map((msg, i) => (
+            <div key={i} style={styles.message}>{msg}</div>
           ))
         )}
       </div>
 
       <form onSubmit={sendMessage} style={styles.form}>
         <input
+          type="text"
+          placeholder="Type a message..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
           style={styles.input}
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Type your message..."
         />
-        <button style={styles.button} type="submit">
-          Send 🚀
-        </button>
+        <button type="submit" style={styles.button}>Send</button>
       </form>
     </div>
   );
 }
 
-// 💎 Simple CSS styling
+// --- Basic styling ---
 const styles = {
   container: {
-    fontFamily: "Arial, sans-serif",
-    maxWidth: "600px",
-    margin: "50px auto",
-    background: "#fff",
-    borderRadius: "12px",
-    boxShadow: "0 0 10px rgba(0,0,0,0.1)",
-    padding: "20px",
-    textAlign: "center",
+    width: "100%",
+    height: "100vh",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#f2f2f2",
   },
-  header: {
-    color: "#333",
-    marginBottom: "15px",
+  title: {
+    fontSize: "2rem",
+    marginBottom: "20px",
+    color: "#222",
   },
   chatBox: {
-    height: "350px",
+    width: "90%",
+    maxWidth: "500px",
+    height: "60vh",
     overflowY: "auto",
-    border: "1px solid #ddd",
-    borderRadius: "8px",
-    padding: "10px",
-    marginBottom: "15px",
-    background: "#fafafa",
-  },
-  empty: {
-    color: "#999",
-    fontStyle: "italic",
+    background: "#fff",
+    borderRadius: "12px",
+    padding: "15px",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+    marginBottom: "20px",
   },
   message: {
-    background: "#f0f0f0",
-    padding: "8px 12px",
+    background: "#e1eaff",
+    padding: "10px 14px",
     borderRadius: "8px",
     margin: "6px 0",
-    textAlign: "left",
+    alignSelf: "flex-start",
+    color: "#333",
+  },
+  placeholder: {
+    color: "#aaa",
+    textAlign: "center",
+    marginTop: "30%",
   },
   form: {
     display: "flex",
-    justifyContent: "space-between",
+    width: "90%",
+    maxWidth: "500px",
   },
   input: {
     flex: 1,
-    padding: "10px",
+    padding: "12px",
     borderRadius: "8px",
     border: "1px solid #ccc",
-    marginRight: "10px",
+    outline: "none",
   },
   button: {
-    background: "#007bff",
-    color: "white",
-    padding: "10px 20px",
-    border: "none",
+    padding: "12px 18px",
     borderRadius: "8px",
+    border: "none",
+    background: "#007bff",
+    color: "#fff",
+    marginLeft: "10px",
     cursor: "pointer",
   },
 };
