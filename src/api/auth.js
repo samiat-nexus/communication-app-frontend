@@ -1,29 +1,46 @@
 // src/api/auth.js
 import axios from "axios";
 
-// 🔹 Auto-detect backend base URL
-const API_BASE =
-  process.env.REACT_APP_BACKEND_URL ||
-  (window.location.hostname === "localhost"
-    ? "http://localhost:3000"
-    : "https://si-communication-app.onrender.com");
+const getApiBase = () => {
+  // First: env variable (set this in frontend/.env for Render)
+  if (process.env.REACT_APP_BACKEND_URL) {
+    // ensure no trailing slash
+    return process.env.REACT_APP_BACKEND_URL.replace(/\/+$/, "");
+  }
 
-// ✅ Signup request
+  // Second: if running locally (dev)
+  if (typeof window !== "undefined" && window.location.hostname === "localhost") {
+    return "http://localhost:5001"; // <-- change if your backend uses other local port
+  }
+
+  // Fallback: use same origin (useful if backend is proxied)
+  if (typeof window !== "undefined") {
+    return `${window.location.protocol}//${window.location.hostname}${window.location.port ? ":" + window.location.port : ""}`;
+  }
+
+  return "http://localhost:5001";
+};
+
+export const API_BASE = getApiBase();
+console.log("🌍 API_BASE:", API_BASE); // dev debug: confirm value in browser console
+
+// Wrapper helpers
 export const signup = async (userData) => {
-  const response = await axios.post(`${API_BASE}/api/auth/signup`, userData);
-  return response.data;
+  const url = `${API_BASE}/api/auth/signup`;
+  const res = await axios.post(url, userData);
+  return res.data;
 };
 
-// ✅ Login request
 export const login = async (userData) => {
-  const response = await axios.post(`${API_BASE}/api/auth/login`, userData);
-  return response.data;
+  const url = `${API_BASE}/api/auth/login`;
+  const res = await axios.post(url, userData);
+  return res.data;
 };
 
-// ✅ Get current user
 export const getCurrentUser = async (token) => {
-  const response = await axios.get(`${API_BASE}/api/auth/me`, {
+  const url = `${API_BASE}/api/auth/me`;
+  const res = await axios.get(url, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  return response.data;
+  return res.data;
 };
