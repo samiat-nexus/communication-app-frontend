@@ -1,64 +1,100 @@
 // src/context/AuthContext.js
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { login, signup, getCurrentUser } from "../api/auth";
+import { login as apiLogin, signup as apiSignup, getCurrentUser } from "../api/auth";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loadingInit, setLoadingInit] = useState(true);
+  const [authLoading, setAuthLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // --- Load user on startup ---
+  // On startup — if token exists, fetch current user
   useEffect(() => {
-    const fetchUser = async () => {
+    const init = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setLoadingInit(false);
+        return;
+      }
       try {
-        const currentUser = await getCurrentUser();
-        if (currentUser) setUser(currentUser);
-      } catch (error) {
-        console.error("❌ Failed to fetch current user:", error);
+        const data = await getCurrentUser(token);
+        // API may return user directly or { user: ... }
+        const currentUser = data.user ?? data;
+        setUser(currentUser);
+      } catch (err) {
+        console.error("Init getCurrentUser failed:", err);
+        localStorage.removeItem("token");
       } finally {
-        setLoading(false);
+        setLoadingInit(false);
       }
     };
-    fetchUser();
+    init();
   }, []);
 
-  // --- Login handler ---
-  const handleLogin = async (email, password) => {
+  // Login
+  const login = async (email, password) => {
+    setAuthLoading(true);
+    setError(null);
     try {
-      const data = await login(email, password);
-      setUser(data.user);
-      localStorage.setItem("token", data.token);
-      return true;
-    } catch (error) {
-      console.error("❌ Login failed:", error);
+      const res = await apiLogin({ email, password });
+      // expect res = { token, user }
+      if (res?.token) {
+        localStorage.setItem("token", res.token);
+        setUser(res.user ?? res);
+        setAuthLoading(false);
+        return true;
+      }
+      setError("Invalid login response");
+      setAuthLoading(false);
+      return false;
+    } catch (err) {
+      console.error("Login error:", err);
+      setError(err?.response?.data?.message || "Login failed");
+      setAuthLoading(false);
       return false;
     }
   };
 
-  // --- Signup handler ---
-  const handleSignup = async (email, password) => {
+  // Signup
+  const signup = async (email, password) => {
+    setAuthLoading(true);
+    setError(null);
     try {
-      const data = await signup(email, password);
-      setUser(data.user);
-      localStorage.setItem("token", data.token);
-      return true;
-    } catch (error) {
-      console.error("❌ Signup failed:", error);
+      const res = await apiSignup({ email, password });
+      if (res?.token) {
+        localStorage.setItem("token", res.token);
+        setUser(res.user ?? res);
+        setAuthLoading(false);
+        return true;
+      }
+      setError("Invalid signup response");
+      setAuthLoading(false);
+      return false;
+    } catch (err) {
+      console.error("Signup error:", err);
+      setError(err?.response?.data?.message || "Signup failed");
+      setAuthLoading(false);
       return false;
     }
   };
 
-  // --- Logout handler ---
   const logout = () => {
-    setUser(null);
     localStorage.removeItem("token");
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider
-      value={{ user, loading, login: handleLogin, signup: handleSignup, logout }}
-    >
+    <AuthContext.Provider value={{
+      user,
+      loadingInit,
+      authLoading,
+      error,
+      login,
+      signup,
+      logout
+    }}>
       {children}
     </AuthContext.Provider>
   );
