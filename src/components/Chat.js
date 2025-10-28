@@ -14,7 +14,7 @@ export default function Chat() {
     const username = localStorage.getItem("username") || "Anonymous";
     setName(username);
 
-    const newSocket = io("http://localhost:5001", {
+    const newSocket = io("http://si-communication-app.onrender.com", {
       transports: ["websocket"],
       withCredentials: true,
     });
