@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import io from "socket.io-client";
 
 const SOCKET_SERVER_URL =
-  process.env.REACT_APP_BACKEND_URL || "https://communication-app-backend.onrender.com";
+  process.env.REACT_APP_BACKEND_URL || "https://si-communication-app.onrender.com";
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
